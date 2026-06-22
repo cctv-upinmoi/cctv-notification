@@ -1,0 +1,4 @@
+cctv-notification
+.env
+*.exe
+*.test
