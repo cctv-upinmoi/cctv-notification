@@ -1,0 +1,46 @@
+name: cctv-notification
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build -o cctv-notification ./cmd/server
+
+      - name: Resolve image tags
+        id: meta
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "tags=${{ github.ref_name }},latest" >> $GITHUB_OUTPUT
+          else
+            echo "tags=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: mr-smithers-excellent/docker-build-push@v6
+        name: Build & push Docker image
+        with:
+          image: ${{ secrets.DOCKER_NAME }}/cctv-notification
+          tags: ${{ steps.meta.outputs.tags }}
+          registry: docker.io
+          dockerfile: Dockerfile
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
